@@ -730,7 +730,7 @@ static void interim(int sd, short args, void *cbdata)
             envar.envar = info->value.data.envar.envar;
             envar.value = info->value.data.envar.value;
             envar.separator = info->value.data.envar.separator;
-            prte_set_attribute(&jdata->attributes, PRTE_JOB_PREPEND_ENVAR, PRTE_ATTR_GLOBAL, &envar,
+            prte_prepend_attribute(&jdata->attributes, PRTE_JOB_PREPEND_ENVAR, PRTE_ATTR_GLOBAL, &envar,
                                PMIX_ENVAR);
         } else if (PMIX_CHECK_KEY(info, PMIX_APPEND_ENVAR)) {
             envar.envar = info->value.data.envar.envar;
