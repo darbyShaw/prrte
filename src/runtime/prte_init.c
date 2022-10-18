@@ -324,6 +324,15 @@ int prte_init(int *pargc, char ***pargv, prte_proc_type_t flags)
         error = "setup node topologies array";
         goto error;
     }
+    prte_groups = PMIX_NEW(pmix_pointer_array_t);
+    if (PRTE_SUCCESS
+        != (ret = pmix_pointer_array_init(prte_groups, PRTE_GLOBAL_ARRAY_BLOCK_SIZE,
+                                          PRTE_GLOBAL_ARRAY_MAX_SIZE,
+                                          PRTE_GLOBAL_ARRAY_BLOCK_SIZE))) {
+        PRTE_ERROR_LOG(ret);
+        error = "setup groups array";
+        goto error;
+    }
 
     /* open the SCHIZO framework as everyone needs it, and the
      * ess will use it to help select its component */

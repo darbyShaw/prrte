@@ -1072,6 +1072,9 @@ pmix_status_t pmix_server_group_fn(pmix_group_operation_t op, char *gpid,
         PMIX_PROC_CREATE(pset->members, pset->num_members);
         memcpy(pset->members, procs, nprocs * sizeof(pmix_proc_t));
         pmix_list_append(&prte_pmix_server_globals.groups, &pset->super);
+        /*TODO: This shouldn't be here. Find a better place.*/
+        prte_group_t *grp = (prte_group_t *) pset;
+        prte_set_group_data_object(grp);
     } else if (PMIX_GROUP_DESTRUCT == op) {
         /* find this group ID on our list of groups */
         PMIX_LIST_FOREACH(pset, &prte_pmix_server_globals.groups, pmix_server_pset_t)

@@ -442,6 +442,14 @@ struct prte_proc_t {
 typedef struct prte_proc_t prte_proc_t;
 PRTE_EXPORT PMIX_CLASS_DECLARATION(prte_proc_t);
 
+struct prte_group_t {
+    pmix_list_item_t super;
+    char *name;
+    pmix_proc_t *members;
+    size_t num_members;
+};
+typedef struct prte_group_t prte_group_t;
+
 /**
  * Get a job data object
  * We cannot just reference a job data object with its jobid as
@@ -507,6 +515,10 @@ PRTE_EXPORT prte_node_rank_t prte_get_proc_node_rank(const pmix_proc_t *proc);
 PRTE_EXPORT prte_node_t* prte_node_match(pmix_list_t *nodes, const char *name);
 PRTE_EXPORT bool prte_nptr_match(prte_node_t *n1, prte_node_t *n2);
 
+/* Get namespace from group */
+PRTE_EXPORT void prte_get_ns_from_group(pmix_nspace_t ns, pmix_rank_t *rank);
+PRTE_EXPORT int prte_set_group_data_object(prte_group_t *grp);
+
 /* global variables used by RTE - instanced in prte_globals.c */
 PRTE_EXPORT extern bool prte_debug_daemons_flag;
 PRTE_EXPORT extern bool prte_debug_daemons_file_flag;
@@ -570,6 +582,7 @@ PRTE_EXPORT extern pmix_pointer_array_t *prte_job_data;
 PRTE_EXPORT extern pmix_pointer_array_t *prte_node_pool;
 PRTE_EXPORT extern pmix_pointer_array_t *prte_node_topologies;
 PRTE_EXPORT extern pmix_pointer_array_t *prte_local_children;
+PRTE_EXPORT extern pmix_pointer_array_t *prte_groups;
 PRTE_EXPORT extern pmix_rank_t prte_total_procs;
 PRTE_EXPORT extern char *prte_base_compute_node_sig;
 PRTE_EXPORT extern bool prte_hetero_nodes;

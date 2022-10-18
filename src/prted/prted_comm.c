@@ -702,6 +702,9 @@ static char *get_prted_comm_cmd_str(int command)
 
     case PRTE_DAEMON_DVM_CLEANUP_JOB_CMD:
         return strdup("PRTE_DAEMON_DVM_CLEANUP_JOB_CMD");
+    
+    case PRTE_DAEMON_DVM_ADD_GRPS:
+        return strdup("PRTE_DAEMON_DVM_ADD_GRPS");
 
     default:
         return strdup("Unknown Command!");

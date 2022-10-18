@@ -161,6 +161,78 @@ static int allgather(prte_grpcomm_coll_t *coll,
     return rc;
 }
 
+static int xcast_grp_info(prte_grpcomm_coll_t *coll, int mode, size_t sz)
+{   
+    pmix_data_buffer_t *relay;
+    int rc;
+    prte_daemon_cmd_flag_t command = PRTE_DAEMON_DVM_ADD_GRPS; 
+    prte_grpcomm_signature_t bcast_sig;
+
+    PMIX_OUTPUT_VERBOSE((1, prte_grpcomm_base_framework.framework_output,
+                         "%s grpcomm:direct: xcast_grp_info",
+                         PRTE_NAME_PRINT(PRTE_PROC_MY_NAME)));
+
+    PMIX_DATA_BUFFER_CREATE(relay);
+
+    /* pack the command */
+    rc = PMIx_Data_pack(NULL, relay, &command, 1, PMIX_UINT8);
+    if (PMIX_SUCCESS != rc) {
+        PMIX_ERROR_LOG(rc);
+        PMIX_DATA_BUFFER_RELEASE(relay);
+        return rc;
+    }
+    /* pack the group information */
+    rc = PMIx_Data_pack(NULL, relay, &coll->sig->sz, 1, PMIX_SIZE);
+    if (PMIX_SUCCESS != rc) {
+        PMIX_ERROR_LOG(rc);
+        PMIX_DATA_BUFFER_RELEASE(relay);
+        return rc;
+    }
+    rc = PMIx_Data_pack(NULL, relay, coll->sig->signature, coll->sig->sz, PMIX_PROC);
+    if (PMIX_SUCCESS != rc) {
+        PMIX_ERROR_LOG(rc);
+        PMIX_DATA_BUFFER_RELEASE(relay);
+    }
+     /* pack the mode */
+    rc = PMIx_Data_pack(NULL, relay, &mode, 1, PMIX_INT32);
+    if (PMIX_SUCCESS != rc) {
+        PMIX_ERROR_LOG(rc);
+        PMIX_DATA_BUFFER_RELEASE(relay);
+        return rc;
+    }
+    if (1 == mode) {
+        rc = PMIx_Data_pack(NULL, relay, &sz, 1, PMIX_UINT32);
+        if (PMIX_SUCCESS != rc) {
+            PMIX_ERROR_LOG(rc);
+            PMIX_DATA_BUFFER_RELEASE(relay);
+            return rc;
+        }
+    }
+
+    /* pack the coll status */
+    rc = PMIx_Data_pack(NULL, relay, &coll->status, 1, PMIX_STATUS);
+    if (PMIX_SUCCESS != rc) {
+        PMIX_ERROR_LOG(rc);
+        PMIX_DATA_BUFFER_RELEASE(relay);
+        return rc;
+    }
+
+    /* pass along the payload */
+    rc = PMIx_Data_copy_payload(relay, &coll->bucket);
+    if (PMIX_SUCCESS != rc) {
+        PMIX_ERROR_LOG(rc);
+        PMIX_DATA_BUFFER_RELEASE(relay);
+        return rc;
+    }
+    bcast_sig.signature = (pmix_proc_t *) malloc(sizeof(pmix_proc_t));
+    PMIX_LOAD_PROCID(&bcast_sig.signature[0], PRTE_PROC_MY_NAME->nspace, PMIX_RANK_WILDCARD);
+    bcast_sig.sz = 1;
+    (void) prte_grpcomm.xcast(&bcast_sig, PRTE_RML_TAG_DAEMON, relay);
+
+    PMIX_DATA_BUFFER_RELEASE(relay);
+    return rc;
+}
+
 static void allgather_recv(int status, pmix_proc_t *sender,
                            pmix_data_buffer_t *buffer,
                            prte_rml_tag_t tag, void *cbdata)
@@ -178,6 +250,7 @@ static void allgather_recv(int status, pmix_proc_t *sender,
     prte_grpcomm_coll_t *coll;
     pmix_status_t local_status;
     PRTE_HIDE_UNUSED_PARAMS(status, tag, cbdata);
+    size_t sz;
 
     PMIX_OUTPUT_VERBOSE((1, prte_grpcomm_base_framework.framework_output,
                          "%s grpcomm:direct allgather recvd from %s",
@@ -354,6 +427,10 @@ static void allgather_recv(int status, pmix_proc_t *sender,
                 PMIX_DATA_BUFFER_RELEASE(reply);
                 PMIX_PROC_FREE(sig.signature, sig.sz);
                 return;
+            }
+            rc = xcast_grp_info(coll, mode, sz);
+            if (PMIX_SUCCESS != rc) {
+                PMIX_ERROR_LOG(rc);
             }
             /* send the release via xcast */
             (void) prte_grpcomm.xcast(&sig, PRTE_RML_TAG_COLL_RELEASE, reply);

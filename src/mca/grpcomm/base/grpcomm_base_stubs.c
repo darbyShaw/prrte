@@ -277,7 +277,14 @@ static int create_dmns(prte_grpcomm_signature_t *sig, pmix_rank_t **dmns, size_t
 
     PMIX_CONSTRUCT(&ds, pmix_list_t);
     for (n = 0; n < sig->sz; n++) {
-        if (NULL == (jdata = prte_get_job_data_object(sig->signature[n].nspace))) {
+        /*First search in groups. We assume that we know groups about formed globally */
+        pmix_nspace_t ns;
+        pmix_rank_t rank;
+        PMIX_LOAD_NSPACE(ns, sig->signature[n].nspace);
+        rank = sig->signature[n].rank;
+        
+        prte_get_ns_from_group(ns, &rank);    
+        if (NULL == (jdata = prte_get_job_data_object(ns))) {
             PRTE_ERROR_LOG(PRTE_ERR_NOT_FOUND);
             rc = PRTE_ERR_NOT_FOUND;
             break;
@@ -294,7 +301,7 @@ static int create_dmns(prte_grpcomm_signature_t *sig, pmix_rank_t **dmns, size_t
             rc = PRTE_ERR_NOT_FOUND;
             break;
         }
-        if (PMIX_RANK_WILDCARD == sig->signature[n].rank) {
+        if (PMIX_RANK_WILDCARD == rank) {
             PMIX_OUTPUT_VERBOSE((1, prte_grpcomm_base_framework.framework_output,
                                  "%s grpcomm:base:create_dmns called for all procs in job %s",
                                  PRTE_NAME_PRINT(PRTE_PROC_MY_NAME),
@@ -333,8 +340,8 @@ static int create_dmns(prte_grpcomm_signature_t *sig, pmix_rank_t **dmns, size_t
                                  "%s sign: GETTING PROC OBJECT FOR %s",
                                  PRTE_NAME_PRINT(PRTE_PROC_MY_NAME),
                                  PRTE_NAME_PRINT(&sig->signature[n])));
-            proc = (prte_proc_t *) pmix_pointer_array_get_item(jdata->procs,
-                                                               sig->signature[n].rank);
+
+            proc = (prte_proc_t *) pmix_pointer_array_get_item(jdata->procs, rank);
             if (NULL == proc) {
                 PRTE_ERROR_LOG(PRTE_ERR_NOT_FOUND);
                 rc = PRTE_ERR_NOT_FOUND;

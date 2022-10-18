@@ -125,6 +125,7 @@ pmix_pointer_array_t *prte_job_data = NULL;
 pmix_pointer_array_t *prte_node_pool = NULL;
 pmix_pointer_array_t *prte_node_topologies = NULL;
 pmix_pointer_array_t *prte_local_children = NULL;
+pmix_pointer_array_t *prte_groups = NULL;
 pmix_rank_t prte_total_procs = 0;
 char *prte_base_compute_node_sig = NULL;
 bool prte_hetero_nodes = false;
@@ -253,6 +254,69 @@ int prte_set_job_data_object(prte_job_t *jdata)
         return PRTE_ERROR;
     }
     return PRTE_SUCCESS;
+}
+
+int prte_set_group_data_object(prte_group_t *grp)
+{
+    prte_group_t *gptr;
+    int i, save = -1;
+
+    /* if the group data wasn't setup, we cannot set the data */
+    if (NULL == prte_groups) {
+        return PRTE_ERROR;
+    }
+    /* if the nspace is invalid, then that's an error */
+    if (PMIX_NSPACE_INVALID(grp->name)) {
+        return PRTE_ERROR;
+    }
+    /* verify that we don't already have this object */
+    for (i = 0; i < prte_groups->size; i++) {
+        if (NULL == (gptr = (prte_group_t *) pmix_pointer_array_get_item(prte_groups, i))) {
+            if (0 > save) {
+                save = i;
+            }
+            continue;
+        }
+        if (PMIX_CHECK_NSPACE(gptr->name, grp->name)) {
+            return PRTE_EXISTS;
+        }
+    }
+
+    if (-1 == save) {
+        save = pmix_pointer_array_add(prte_groups, grp);
+    } else {
+        pmix_pointer_array_set_item(prte_groups, save, grp);
+    }
+    if (0 > save) {
+        return PRTE_ERROR;
+    }
+    return PRTE_SUCCESS;
+}
+
+void prte_get_ns_from_group(pmix_nspace_t ns, pmix_rank_t *rank)
+{
+    prte_group_t *gptr;
+    int i;
+
+    /* if the job data wasn't setup, we cannot provide the data */
+    if (NULL == prte_groups) {
+        return;
+    }
+    /* if the nspace is invalid, then reject it */
+    if (PMIX_NSPACE_INVALID(ns)) {
+        return;
+    }
+    for (i = 0; i < prte_groups->size; i++) {
+        if (NULL == (gptr = (prte_group_t *) pmix_pointer_array_get_item(prte_groups, i))) {
+            continue;
+        }
+        if (PMIX_CHECK_NSPACE(gptr->name, ns)) {
+            PMIX_LOAD_NSPACE(ns, gptr->members[*rank].nspace);
+            *rank = gptr->members[*rank].rank;
+            i = -1;
+        }
+    }
+    return;
 }
 
 prte_proc_t *prte_get_proc_object(const pmix_proc_t *proc)
